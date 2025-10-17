@@ -40,13 +40,14 @@ resource "aws_iam_role_policy_attachment" "apprunner_ecr_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
 }
 
-# Wait for IAM role to propagate
+# Wait for IAM role to propagate across AWS regions
+# IAM is eventually consistent and can take time to propagate globally
 resource "time_sleep" "wait_for_iam" {
   depends_on = [
     aws_iam_role_policy_attachment.apprunner_ecr_access
   ]
 
-  create_duration = "30s"
+  create_duration = "90s"
 }
 
 # IAM Role for App Runner Instance (for the running application)
