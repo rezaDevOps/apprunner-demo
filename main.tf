@@ -24,56 +24,14 @@ data "aws_ecr_repository" "app" {
   name = var.ecr_repository
 }
 
-# IAM Role for App Runner
-resource "aws_iam_role" "apprunner_service_role" {
+# IAM Role for App Runner - Use existing pre-created roles
+# These roles are created outside Terraform to avoid IAM propagation issues
+data "aws_iam_role" "apprunner_service_role" {
   name = "${var.apprunner_service_name}-ServiceRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "build.apprunner.amazonaws.com"
-        }
-      }
-    ]
-  })
 }
 
-# Attach policy to allow App Runner to pull from ECR
-resource "aws_iam_role_policy_attachment" "apprunner_ecr_access" {
-  role       = aws_iam_role.apprunner_service_role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
-}
-
-# Wait for IAM role to propagate across AWS regions
-# IAM is eventually consistent and can take time to propagate globally
-resource "time_sleep" "wait_for_iam" {
-  depends_on = [
-    aws_iam_role_policy_attachment.apprunner_ecr_access
-  ]
-
-  create_duration = "90s"
-}
-
-# IAM Role for App Runner Instance (for the running application)
-resource "aws_iam_role" "apprunner_instance_role" {
+data "aws_iam_role" "apprunner_instance_role" {
   name = "${var.apprunner_service_name}-InstanceRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Action = "sts:AssumeRole"
-        Effect = "Allow"
-        Principal = {
-          Service = "tasks.apprunner.amazonaws.com"
-        }
-      }
-    ]
-  })
 }
 
 # App Runner Service
@@ -120,9 +78,4 @@ resource "aws_apprunner_service" "app" {
     Name      = var.apprunner_service_name
     ManagedBy = "Terraform"
   }
-
-  depends_on = [
-    aws_iam_role_policy_attachment.apprunner_ecr_access,
-    time_sleep.wait_for_iam
-  ]
 }
