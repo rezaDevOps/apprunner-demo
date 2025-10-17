@@ -130,4 +130,10 @@ curl http://localhost:8080
 - App Runner expects the container to start serving requests within the health check timeout
 
 ### Terraform State Management
-Consider configuring a remote backend for Terraform state (e.g., S3 bucket with DynamoDB for state locking) rather than using local state, especially for team environments.
+**Remote backend is configured and required** for this project:
+- **S3 Bucket**: `apprunner-demo-terraform-state-703671892588` (versioning enabled)
+- **DynamoDB Table**: `apprunner-demo-terraform-locks` (for state locking)
+- **Region**: us-west-2
+- Backend configuration is in [main.tf](main.tf) terraform block
+
+This ensures Terraform state persists between GitHub Actions runs and prevents resource conflicts.
