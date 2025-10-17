@@ -1,0 +1,47 @@
+name: Build & Deploy Go App Runner
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    env:
+      AWS_REGION: us-west-2
+      ECR_REPOSITORY: apprunner-demo
+      APP_RUNNER_SERVICE_NAME: AppRunnerDemoService
+      IMAGE_TAG: ${{ github.sha }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::703671892588:role/GitHubAppRunnerDeployRole
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build & Push Docker Image
+        run: |
+          ECR_URI=${{ steps.ecr-login.outputs.registry }}/${{ env.ECR_REPOSITORY }}
+          docker build -t $ECR_URI:${{ env.IMAGE_TAG }} .
+          docker push $ECR_URI:${{ env.IMAGE_TAG }}
+          echo "ECR_URI=$ECR_URI:${{ env.IMAGE_TAG }}" >> $GITHUB_ENV
+
+      - name: Terraform Init & Apply
+        run: |
+          terraform init
+          terraform apply -auto-approve \
+            -var="aws_region=${{ env.AWS_REGION }}" \
+            -var="ecr_repository=${{ env.ECR_REPOSITORY }}" \
+            -var="apprunner_service_name=${{ env.APP_RUNNER_SERVICE_NAME }}" \
+            -var="image_identifier=${ECR_URI}:${{ env.IMAGE_TAG }}" \
+            -var="commit_sha=${{ github.sha }}"
