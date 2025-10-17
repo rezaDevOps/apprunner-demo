@@ -40,6 +40,15 @@ resource "aws_iam_role_policy_attachment" "apprunner_ecr_access" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
 }
 
+# Wait for IAM role to propagate
+resource "time_sleep" "wait_for_iam" {
+  depends_on = [
+    aws_iam_role_policy_attachment.apprunner_ecr_access
+  ]
+
+  create_duration = "30s"
+}
+
 # IAM Role for App Runner Instance (for the running application)
 resource "aws_iam_role" "apprunner_instance_role" {
   name = "${var.apprunner_service_name}-InstanceRole"
@@ -104,6 +113,7 @@ resource "aws_apprunner_service" "app" {
   }
 
   depends_on = [
-    aws_iam_role_policy_attachment.apprunner_ecr_access
+    aws_iam_role_policy_attachment.apprunner_ecr_access,
+    time_sleep.wait_for_iam
   ]
 }
