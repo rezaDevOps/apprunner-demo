@@ -11,18 +11,9 @@ provider "aws" {
   region = var.aws_region
 }
 
-# ECR Repository
-resource "aws_ecr_repository" "app" {
-  name                 = var.ecr_repository
-  image_tag_mutability = "MUTABLE"
-
-  image_scanning_configuration {
-    scan_on_push = true
-  }
-
-  lifecycle {
-    prevent_destroy = false
-  }
+# ECR Repository - Use existing repository
+data "aws_ecr_repository" "app" {
+  name = var.ecr_repository
 }
 
 # IAM Role for App Runner

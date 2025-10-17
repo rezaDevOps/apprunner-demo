@@ -20,5 +20,5 @@ output "apprunner_service_status" {
 
 output "ecr_repository_url" {
   description = "The URL of the ECR repository"
-  value       = aws_ecr_repository.app.repository_url
+  value       = data.aws_ecr_repository.app.repository_url
 }
