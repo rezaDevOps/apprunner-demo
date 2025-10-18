@@ -24,26 +24,10 @@ data "aws_ecr_repository" "app" {
   name = var.ecr_repository
 }
 
-# IAM Role for App Runner to access ECR
-resource "aws_iam_role" "apprunner_ecr_access" {
+# IAM Role for App Runner to access ECR (pre-existing, managed outside Terraform)
+# This role must be created manually to avoid IAM propagation issues
+data "aws_iam_role" "apprunner_ecr_access" {
   name = "AppRunnerECRAccessRole"
-
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "build.apprunner.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-}
-
-# Attach AWS managed policy for ECR access
-resource "aws_iam_role_policy_attachment" "apprunner_ecr_policy" {
-  role       = aws_iam_role.apprunner_ecr_access.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
 }
 
 # App Runner Service
@@ -89,7 +73,4 @@ resource "aws_apprunner_service" "app" {
     ManagedBy = "Terraform"
   }
 
-  depends_on = [
-    aws_iam_role_policy_attachment.apprunner_ecr_policy
-  ]
 }
