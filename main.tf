@@ -24,51 +24,41 @@ data "aws_ecr_repository" "app" {
   name = var.ecr_repository
 }
 
-# IAM Role for App Runner Service (to pull from ECR)
+# IAM Role for App Runner to access ECR
 resource "aws_iam_role" "apprunner_ecr_access" {
   name = "AppRunnerECRAccessRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Principal = {
-          Service = "build.apprunner.amazonaws.com"
-        }
-        Action = "sts:AssumeRole"
+    Statement = [{
+      Effect = "Allow"
+      Principal = {
+        Service = "build.apprunner.amazonaws.com"
       }
-    ]
+      Action = "sts:AssumeRole"
+    }]
   })
 }
 
-resource "aws_iam_role_policy" "apprunner_ecr_access_policy" {
-  role = aws_iam_role.apprunner_ecr_access.id
-
-  policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [
-      {
-        Effect = "Allow"
-        Action = [
-          "ecr:GetAuthorizationToken",
-          "ecr:BatchCheckLayerAvailability",
-          "ecr:GetDownloadUrlForLayer",
-          "ecr:BatchGetImage"
-        ]
-        Resource = "*"
-      }
-    ]
-  })
+# Attach AWS managed policy for ECR access
+resource "aws_iam_role_policy_attachment" "apprunner_ecr_policy" {
+  role       = aws_iam_role.apprunner_ecr_access.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
 }
 
+# App Runner Service
 resource "aws_apprunner_service" "app" {
   service_name = var.apprunner_service_name
 
   source_configuration {
+    authentication_configuration {
+      access_role_arn = aws_iam_role.apprunner_ecr_access.arn
+    }
+
     image_repository {
       image_identifier      = var.image_identifier
       image_repository_type = "ECR"
+
       image_configuration {
         port = "8080"
         runtime_environment_variables = {
@@ -77,11 +67,7 @@ resource "aws_apprunner_service" "app" {
       }
     }
 
-    authentication_configuration {
-      access_role_arn = aws_iam_role.apprunner_ecr_access.arn
-    }
-
-    auto_deployments_enabled = true
+    auto_deployments_enabled = false
   }
 
   instance_configuration {
@@ -89,7 +75,21 @@ resource "aws_apprunner_service" "app" {
     memory = "2048"
   }
 
-  tags = {
-    Environment = "production"
+  health_check_configuration {
+    protocol            = "HTTP"
+    path                = "/health"
+    interval            = 10
+    timeout             = 5
+    healthy_threshold   = 1
+    unhealthy_threshold = 5
   }
+
+  tags = {
+    Name      = var.apprunner_service_name
+    ManagedBy = "Terraform"
+  }
+
+  depends_on = [
+    aws_iam_role_policy_attachment.apprunner_ecr_policy
+  ]
 }

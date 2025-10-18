@@ -4,136 +4,129 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an **AWS App Runner deployment project** that uses Terraform for infrastructure-as-code and GitHub Actions for CI/CD. The project is designed to:
-1. Build a Go application in a Docker container
-2. Push the container image to AWS ECR (Elastic Container Registry)
-3. Deploy the containerized application to AWS App Runner using Terraform
-
-**Current Status:** This is a skeleton/template repository. Most files are empty placeholders awaiting implementation.
+This is an **AWS App Runner deployment project** using Terraform for infrastructure-as-code and GitHub Actions for CI/CD. The project:
+1. Builds a Go application in a Docker container
+2. Pushes the container image to AWS ECR
+3. Deploys to AWS App Runner using Terraform
 
 ## Repository Structure
 
 ```
 App Runner/
-├── app/                    # Go application source code
-│   ├── main.go            # Application entry point (EMPTY - needs implementation)
-│   ├── go.mod             # Go module definition (EMPTY)
-│   └── go.sum             # Go dependencies (EMPTY)
+├── app/
+│   ├── main.go              # Go HTTP server application
+│   ├── go.mod               # Go module definition
+│   └── go.sum               # Go dependencies
 ├── .github/workflows/
-│   └── deploy.yml         # GitHub Actions CI/CD pipeline (EMPTY - needs implementation)
-├── Dockerfile             # Container image definition (EMPTY - needs implementation)
-├── main.tf                # Terraform main configuration (EMPTY - needs implementation)
-├── variables.tf           # Terraform input variables (IMPLEMENTED)
-├── outputs.tf             # Terraform outputs (EMPTY - needs implementation)
-└── trust-policy.json      # IAM trust policy for GitHub OIDC (EMPTY - needs implementation)
+│   └── deploy.yml           # GitHub Actions CI/CD pipeline
+├── Dockerfile               # Multi-stage Docker build
+├── main.tf                  # Terraform configuration (IAM + App Runner)
+├── variables.tf             # Terraform input variables
+└── outputs.tf               # Terraform outputs (service URL, etc.)
 ```
 
-## Key Architecture Components
+## Key Configuration
 
 ### Terraform Variables (variables.tf)
-The following variables are defined and available for use:
-
-- `aws_region` (default: "us-west-2") - AWS region for deployment
-- `ecr_repository` (default: "apprunner-demo") - ECR repository name
-- `apprunner_service_name` (default: "AppRunnerDemoService") - App Runner service name
+- `aws_region` (default: "us-west-2")
+- `ecr_repository` (default: "apprunner-demo")
+- `apprunner_service_name` (default: "AppRunnerDemoService")
 - `image_identifier` (required) - Full ECR image URI with tag
-- `commit_sha` (default: "unknown") - Git commit SHA for traceability
+- `commit_sha` (default: "unknown") - Git commit SHA
 
-### Intended CI/CD Flow
-The GitHub Actions workflow should:
-1. Checkout code
-2. Configure AWS credentials using OIDC (role: `arn:aws:iam::703671892588:role/GitHubAppRunnerDeployRole`)
-3. Login to ECR
-4. Build and push Docker image (tagged with commit SHA)
-5. Run `terraform init` and `terraform apply` with the appropriate variables
+### AWS Resources
+- **ECR Repository**: `apprunner-demo` (pre-existing, referenced as data source)
+- **IAM Role**: `AppRunnerECRAccessRole` (for App Runner to pull from ECR)
+- **App Runner Service**: `AppRunnerDemoService`
 
-### AWS Account Configuration
-- **AWS Account ID:** 703671892588
-- **IAM Role:** GitHubAppRunnerDeployRole (for GitHub Actions OIDC authentication)
-- **Default Region:** us-west-2
+### AWS Account
+- **Account ID**: 703671892588
+- **Region**: us-west-2
+- **GitHub Actions Role**: GitHubAppRunnerDeployRole (OIDC authentication)
 
 ## Development Commands
 
-### Terraform Commands
+### Terraform
 ```bash
 # Initialize Terraform
 terraform init
 
-# Plan infrastructure changes
-terraform plan \
-  -var="image_identifier=<ECR_URI>:<TAG>" \
-  -var="commit_sha=<COMMIT_SHA>"
+# Plan changes
+terraform plan -var="image_identifier=<ECR_URI>:<TAG>"
 
-# Apply infrastructure changes
-terraform apply \
-  -var="image_identifier=<ECR_URI>:<TAG>" \
-  -var="commit_sha=<COMMIT_SHA>"
+# Apply changes
+terraform apply -var="image_identifier=<ECR_URI>:<TAG>"
 
 # Destroy infrastructure
 terraform destroy
 ```
 
-### Go Application Commands (once implemented)
+### Go Application
 ```bash
-# Navigate to app directory
 cd app
-
-# Initialize Go module (if starting fresh)
-go mod init <module-name>
-
-# Install dependencies
-go mod download
-go mod tidy
 
 # Run locally
 go run main.go
 
-# Build binary
+# Build
 go build -o app main.go
 
-# Run tests
+# Test
 go test ./...
 ```
 
-### Docker Commands
+### Docker
 ```bash
-# Build Docker image locally
+# Build locally
 docker build -t apprunner-demo:local .
 
-# Run container locally
+# Run locally
 docker run -p 8080:8080 apprunner-demo:local
 
-# Test container
+# Test
 curl http://localhost:8080
+curl http://localhost:8080/health
 ```
 
-## Implementation Notes
+## CI/CD Pipeline
 
-### Required Implementations
+The GitHub Actions workflow (`.github/workflows/deploy.yml`):
+1. Checks out code
+2. Authenticates to AWS using OIDC
+3. Logs into ECR
+4. Builds and pushes Docker image (tagged with commit SHA)
+5. Runs Terraform to deploy/update App Runner service
 
-1. **app/main.go** - Should implement a basic HTTP server (typical port: 8080 or 80)
-2. **app/go.mod** - Should declare the Go module and any dependencies (e.g., `github.com/gorilla/mux`, `net/http`)
-3. **Dockerfile** - Should use multi-stage build to compile Go binary and package in minimal runtime image
-4. **main.tf** - Should define:
-   - `aws_apprunner_service` resource
-   - IAM roles and policies for App Runner
-   - ECR repository (or reference existing one)
-   - Environment variables for the service
-5. **outputs.tf** - Should output the App Runner service URL
-6. **trust-policy.json** - Should define IAM trust policy allowing GitHub Actions OIDC provider to assume the deployment role
-7. **.github/workflows/deploy.yml** - Should implement the full CI/CD pipeline as outlined above
+## Important Notes
 
-### App Runner Considerations
-- App Runner automatically handles load balancing, auto-scaling, and health checks
-- The application should listen on a configurable port (via environment variable `PORT`)
-- Health check endpoint should return 200 OK (typically `/` or `/health`)
-- App Runner expects the container to start serving requests within the health check timeout
+### Terraform State
+- **Remote backend**: S3 bucket `apprunner-demo-terraform-state-703671892588`
+- **State locking**: DynamoDB table `apprunner-demo-terraform-locks`
+- This ensures state persists between GitHub Actions runs
 
-### Terraform State Management
-**Remote backend is configured and required** for this project:
-- **S3 Bucket**: `apprunner-demo-terraform-state-703671892588` (versioning enabled)
-- **DynamoDB Table**: `apprunner-demo-terraform-locks` (for state locking)
-- **Region**: us-west-2
-- Backend configuration is in [main.tf](main.tf) terraform block
+### App Runner Configuration
+- Application listens on port 8080
+- Health check endpoint: `/health`
+- Environment variable `COMMIT_SHA` injected for traceability
+- CPU: 1024 (1 vCPU)
+- Memory: 2048 MB (2 GB)
 
-This ensures Terraform state persists between GitHub Actions runs and prevents resource conflicts.
+### IAM Trust Relationship
+The `AppRunnerECRAccessRole` must trust `build.apprunner.amazonaws.com`:
+```json
+{
+  "Version": "2012-10-17",
+  "Statement": [{
+    "Effect": "Allow",
+    "Principal": {
+      "Service": "build.apprunner.amazonaws.com"
+    },
+    "Action": "sts:AssumeRole"
+  }]
+}
+```
+
+### Troubleshooting
+- If deployment fails with IAM errors, the role may still be propagating (AWS eventual consistency)
+- The role needs the AWS managed policy: `AWSAppRunnerServicePolicyForECRAccess`
+- Ensure GitHub Actions has proper permissions via the OIDC role
