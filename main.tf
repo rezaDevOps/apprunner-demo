@@ -25,18 +25,18 @@ data "aws_ecr_repository" "app" {
 }
 
 # IAM Role for App Runner Service (to pull from ECR)
-resource "aws_iam_role" "apprunner_service_role" {
-  name = "${var.apprunner_service_name}-ServiceRole"
+resource "aws_iam_role" "apprunner_ecr_access" {
+  name = "${var.apprunner_service_name}-ECRAccessRole"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [
       {
-        Action = "sts:AssumeRole"
         Effect = "Allow"
         Principal = {
           Service = "build.apprunner.amazonaws.com"
         }
+        Action = "sts:AssumeRole"
       }
     ]
   })
@@ -47,16 +47,16 @@ resource "aws_iam_role" "apprunner_service_role" {
 }
 
 # Attach AWS managed policy for ECR access
-resource "aws_iam_role_policy_attachment" "apprunner_ecr_access" {
-  role       = aws_iam_role.apprunner_service_role.name
+resource "aws_iam_role_policy_attachment" "apprunner_ecr_policy" {
+  role       = aws_iam_role.apprunner_ecr_access.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSAppRunnerServicePolicyForECRAccess"
 }
 
 # Wait for IAM role to propagate globally (30 seconds should be enough now)
 resource "time_sleep" "wait_for_iam" {
   depends_on = [
-    aws_iam_role.apprunner_service_role,
-    aws_iam_role_policy_attachment.apprunner_ecr_access
+    aws_iam_role.apprunner_ecr_access,
+    aws_iam_role_policy_attachment.apprunner_ecr_policy
   ]
 
   create_duration = "30s"
@@ -68,7 +68,7 @@ resource "aws_apprunner_service" "app" {
 
   source_configuration {
     authentication_configuration {
-      access_role_arn = aws_iam_role.apprunner_service_role.arn
+      access_role_arn = aws_iam_role.apprunner_ecr_access.arn
     }
 
     image_repository {
