@@ -67,7 +67,7 @@ resource "aws_apprunner_service" "app" {
 
   source_configuration {
     image_repository {
-      image_identifier      = aws_ecr_repository.app.repository_url
+      image_identifier      = var.image_identifier
       image_repository_type = "ECR"
       image_configuration {
         port = "8080"
