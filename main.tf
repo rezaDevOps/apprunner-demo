@@ -1,3 +1,30 @@
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+
+  backend "s3" {
+    bucket         = "apprunner-demo-terraform-state-703671892588"
+    key            = "terraform.tfstate"
+    region         = "us-west-2"
+    dynamodb_table = "apprunner-demo-terraform-locks"
+    encrypt        = true
+  }
+}
+
+provider "aws" {
+  region = var.aws_region
+}
+
+# ECR Repository - Reference existing repository
+data "aws_ecr_repository" "app" {
+  name = var.ecr_repository
+}
+
+# IAM Role for App Runner Service (to pull from ECR)
 resource "aws_iam_role" "apprunner_ecr_access" {
   name = "AppRunnerECRAccessRole"
 
