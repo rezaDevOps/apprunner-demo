@@ -36,7 +36,7 @@ resource "aws_apprunner_service" "app" {
 
   source_configuration {
     authentication_configuration {
-      access_role_arn = aws_iam_role.apprunner_ecr_access.arn
+      access_role_arn = data.aws_iam_role.apprunner_ecr_access.arn
     }
 
     image_repository {
