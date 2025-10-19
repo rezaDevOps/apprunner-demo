@@ -5,6 +5,11 @@ on:
     branches:
       - main
 
+# Prevent multiple deployments from running concurrently
+concurrency:
+  group: apprunner-deployment
+  cancel-in-progress: false
+
 jobs:
   deploy:
     runs-on: ubuntu-latest
