@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is an **AWS App Runner deployment project** using Terraform for infrastructure-as-code and GitHub Actions for CI/CD. The project:
+This is an **AWS App Runner deployment project** using AWS CDK for infrastructure-as-code and GitHub Actions for CI/CD. The project:
 1. Builds a Go application in a Docker container
 2. Pushes the container image to AWS ECR
-3. Deploys to AWS App Runner using Terraform
+3. Deploys to AWS App Runner using AWS CDK (TypeScript)
 
 ## Repository Structure
 
@@ -17,22 +17,27 @@ App Runner/
 │   ├── main.go              # Go HTTP server application
 │   ├── go.mod               # Go module definition
 │   └── go.sum               # Go dependencies
+├── bin/
+│   └── app.ts               # CDK app entry point
+├── lib/
+│   └── apprunner-stack.ts   # CDK stack definition
 ├── .github/workflows/
 │   └── deploy.yml           # GitHub Actions CI/CD pipeline
 ├── Dockerfile               # Multi-stage Docker build
-├── main.tf                  # Terraform configuration (IAM + App Runner)
-├── variables.tf             # Terraform input variables
-└── outputs.tf               # Terraform outputs (service URL, etc.)
+├── cdk.json                 # CDK configuration
+├── package.json             # Node.js dependencies
+└── tsconfig.json            # TypeScript configuration
 ```
 
 ## Key Configuration
 
-### Terraform Variables (variables.tf)
+### CDK Stack Properties (bin/app.ts)
 - `aws_region` (default: "us-west-2")
-- `ecr_repository` (default: "apprunner-demo")
-- `apprunner_service_name` (default: "AppRunnerDemoService")
-- `image_identifier` (required) - Full ECR image URI with tag
-- `commit_sha` (default: "unknown") - Git commit SHA
+- `ecrRepositoryName`: "apprunner-demo"
+- `appRunnerServiceName`: "AppRunnerDemoService"
+- `imageIdentifier` (required) - Full ECR image URI with tag (via IMAGE_IDENTIFIER env var)
+- `commitSha` (default: "unknown") - Git commit SHA (via COMMIT_SHA env var)
+- `iamRoleName`: "AppRunnerECRAccessRole"
 
 ### AWS Resources
 - **ECR Repository**: `apprunner-demo` (pre-existing, referenced as data source)
@@ -46,19 +51,30 @@ App Runner/
 
 ## Development Commands
 
-### Terraform
+### CDK
 ```bash
-# Initialize Terraform
-terraform init
+# Install dependencies
+npm install
 
-# Plan changes
-terraform plan -var="image_identifier=<ECR_URI>:<TAG>"
+# Build TypeScript
+npm run build
 
-# Apply changes
-terraform apply -var="image_identifier=<ECR_URI>:<TAG>"
+# Synthesize CloudFormation template
+npm run synth
+
+# Deploy to AWS
+IMAGE_IDENTIFIER=<ECR_URI>:<TAG> COMMIT_SHA=<SHA> npm run deploy
+
+# View differences
+npm run diff
 
 # Destroy infrastructure
-terraform destroy
+npm run destroy
+
+# Direct CDK commands
+npx cdk deploy
+npx cdk diff
+npx cdk synth
 ```
 
 ### Go Application
@@ -95,14 +111,18 @@ The GitHub Actions workflow (`.github/workflows/deploy.yml`):
 2. Authenticates to AWS using OIDC
 3. Logs into ECR
 4. Builds and pushes Docker image (tagged with commit SHA)
-5. Runs Terraform to deploy/update App Runner service
+5. Installs Node.js dependencies
+6. Runs CDK deploy to update App Runner service
 
 ## Important Notes
 
-### Terraform State
-- **Remote backend**: S3 bucket `apprunner-demo-terraform-state-703671892588`
-- **State locking**: DynamoDB table `apprunner-demo-terraform-locks`
-- This ensures state persists between GitHub Actions runs
+### CDK Bootstrap
+CDK requires a one-time bootstrap in your AWS account:
+```bash
+npx cdk bootstrap aws://703671892588/us-west-2
+```
+
+This creates an S3 bucket and other resources needed for CDK deployments.
 
 ### App Runner Configuration
 - Application listens on port 8080
@@ -130,3 +150,4 @@ The `AppRunnerECRAccessRole` must trust `build.apprunner.amazonaws.com`:
 - If deployment fails with IAM errors, the role may still be propagating (AWS eventual consistency)
 - The role needs the AWS managed policy: `AWSAppRunnerServicePolicyForECRAccess`
 - Ensure GitHub Actions has proper permissions via the OIDC role
+- For CDK-specific errors, check `cdk.out/` directory for synthesized templates
