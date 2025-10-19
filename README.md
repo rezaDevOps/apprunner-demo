@@ -123,10 +123,16 @@ On push to `main` branch, GitHub Actions:
 3. Builds and pushes Docker image to ECR
 4. Deploys infrastructure with CDK
 
-### Required Secrets
+### Required IAM Setup
 
 - AWS authentication via OIDC (no secrets needed)
 - Role: `arn:aws:iam::703671892588:role/GitHubAppRunnerDeployRole`
+- Required policy: `CDKGitHubActionsPolicy` (see [IAM-SETUP.md](IAM-SETUP.md))
+
+The IAM role must have permissions for:
+- CDK operations (SSM, CloudFormation, S3)
+- ECR (push/pull images)
+- App Runner (create/update services)
 
 ## Configuration
 
@@ -201,8 +207,10 @@ npx cdk bootstrap aws://703671892588/us-west-2
 
 ## Documentation
 
+- [README.md](README.md) - This file (project overview)
 - [CLAUDE.md](CLAUDE.md) - AI assistant guidance
 - [MIGRATION.md](MIGRATION.md) - Terraform to CDK migration guide
+- [IAM-SETUP.md](IAM-SETUP.md) - IAM configuration for GitHub Actions
 
 ## License
 

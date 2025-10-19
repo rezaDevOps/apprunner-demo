@@ -6,6 +6,9 @@ node_modules
 cdk.out
 cdk.context.json
 
+# Keep IAM policy file
+!cdk-github-actions-policy.json
+
 # Terraform (deprecated - safe to delete)
 .terraform
 .terraform.lock.hcl

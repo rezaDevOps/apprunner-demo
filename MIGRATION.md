@@ -30,7 +30,25 @@ The project has been successfully migrated from Terraform to AWS CDK (TypeScript
 
 ## Migration Steps
 
-### 1. Bootstrap CDK (One-time setup)
+### 1. Update IAM Permissions (Required)
+
+The GitHub Actions role needs additional permissions for CDK. Apply the CDK policy:
+
+```bash
+# Create the CDK policy
+aws iam create-policy \
+  --policy-name CDKGitHubActionsPolicy \
+  --policy-document file://cdk-github-actions-policy.json
+
+# Attach to the GitHub Actions role
+aws iam attach-role-policy \
+  --role-name GitHubAppRunnerDeployRole \
+  --policy-arn arn:aws:iam::703671892588:policy/CDKGitHubActionsPolicy
+```
+
+See [IAM-SETUP.md](IAM-SETUP.md) for detailed IAM configuration.
+
+### 2. Bootstrap CDK (One-time setup)
 
 Before deploying with CDK, you need to bootstrap your AWS account:
 
