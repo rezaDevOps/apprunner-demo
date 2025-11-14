@@ -1,0 +1,167 @@
+// Jest Snapshot v1, https://goo.gl/fbAQLP
+
+exports[`AppRunnerStack snapshot test - validates entire template structure 1`] = `
+{
+  "Outputs": {
+    "ECRRepositoryURL": {
+      "Description": "The URL of the ECR repository",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "703671892588.dkr.ecr.us-west-2.",
+            {
+              "Ref": "AWS::URLSuffix",
+            },
+            "/apprunner-demo",
+          ],
+        ],
+      },
+    },
+    "ServiceARN": {
+      "Description": "The ARN of the App Runner service",
+      "Export": {
+        "Name": "AppRunnerServiceARN",
+      },
+      "Value": {
+        "Fn::GetAtt": [
+          "AppRunnerService",
+          "ServiceArn",
+        ],
+      },
+    },
+    "ServiceId": {
+      "Description": "The ID of the App Runner service",
+      "Value": {
+        "Fn::GetAtt": [
+          "AppRunnerService",
+          "ServiceId",
+        ],
+      },
+    },
+    "ServiceStatus": {
+      "Description": "The status of the App Runner service",
+      "Value": {
+        "Fn::GetAtt": [
+          "AppRunnerService",
+          "Status",
+        ],
+      },
+    },
+    "ServiceURL": {
+      "Description": "The URL of the App Runner service",
+      "Export": {
+        "Name": "AppRunnerServiceURL",
+      },
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Fn::GetAtt": [
+                "AppRunnerService",
+                "ServiceUrl",
+              ],
+            },
+          ],
+        ],
+      },
+    },
+  },
+  "Parameters": {
+    "BootstrapVersion": {
+      "Default": "/cdk-bootstrap/hnb659fds/version",
+      "Description": "Version of the CDK Bootstrap resources in this environment, automatically retrieved from SSM Parameter Store. [cdk:skip]",
+      "Type": "AWS::SSM::Parameter::Value<String>",
+    },
+  },
+  "Resources": {
+    "AppRunnerService": {
+      "Properties": {
+        "HealthCheckConfiguration": {
+          "HealthyThreshold": 1,
+          "Interval": 10,
+          "Path": "/health",
+          "Protocol": "HTTP",
+          "Timeout": 5,
+          "UnhealthyThreshold": 5,
+        },
+        "InstanceConfiguration": {
+          "Cpu": "1024",
+          "Memory": "2048",
+        },
+        "ServiceName": "AppRunnerDemoService",
+        "SourceConfiguration": {
+          "AuthenticationConfiguration": {
+            "AccessRoleArn": {
+              "Fn::Join": [
+                "",
+                [
+                  "arn:",
+                  {
+                    "Ref": "AWS::Partition",
+                  },
+                  ":iam::703671892588:role/AppRunnerECRAccessRole",
+                ],
+              ],
+            },
+          },
+          "AutoDeploymentsEnabled": false,
+          "ImageRepository": {
+            "ImageConfiguration": {
+              "Port": "8080",
+              "RuntimeEnvironmentVariables": [
+                {
+                  "Name": "COMMIT_SHA",
+                  "Value": "abc123",
+                },
+              ],
+            },
+            "ImageIdentifier": "703671892588.dkr.ecr.us-west-2.amazonaws.com/apprunner-demo:abc123",
+            "ImageRepositoryType": "ECR",
+          },
+        },
+        "Tags": [
+          {
+            "Key": "ManagedBy",
+            "Value": "CDK",
+          },
+          {
+            "Key": "Name",
+            "Value": "AppRunnerDemoService",
+          },
+        ],
+      },
+      "Type": "AWS::AppRunner::Service",
+    },
+  },
+  "Rules": {
+    "CheckBootstrapVersion": {
+      "Assertions": [
+        {
+          "Assert": {
+            "Fn::Not": [
+              {
+                "Fn::Contains": [
+                  [
+                    "1",
+                    "2",
+                    "3",
+                    "4",
+                    "5",
+                  ],
+                  {
+                    "Ref": "BootstrapVersion",
+                  },
+                ],
+              },
+            ],
+          },
+          "AssertDescription": "CDK bootstrap stack version 6 required. Please run 'cdk bootstrap' with a recent version of the CDK CLI.",
+        },
+      ],
+    },
+  },
+}
+`;
